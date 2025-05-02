@@ -8,7 +8,7 @@ intents.message_content = True
 intents.reactions = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-tree = app_commands.CommandTree(bot)
+tree = bot.tree  # ✅ correction ici
 
 @bot.event
 async def on_ready():
