@@ -4,41 +4,51 @@ from discord import app_commands
 import os
 
 intents = discord.Intents.default()
+intents.message_content = True
+intents.reactions = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
-tree = bot.tree
+tree = app_commands.CommandTree(bot)
 
 @bot.event
 async def on_ready():
-    print(f"✅ Connecté en tant que {bot.user}")
-    try:
-        synced = await tree.sync()
-        print(f"🌐 {len(synced)} commande(s) slash synchronisée(s).")
-    except Exception as e:
-        print(f"❌ Erreur de synchronisation : {e}")
+    await tree.sync()
+    print(f"✅ Connecté en tant que {bot.user} - Slash commands synchronisées.")
 
-@tree.command(name="sondage", description="Crée un sondage avec des réactions")
+@tree.command(name="sondage", description="Créer un sondage avec des réactions.")
 @app_commands.describe(
     question="La question du sondage",
-    max_votes="Nombre maximum de votes par personne",
-    reponses="Réponses séparées par des virgules (ex: Oui,Non,Peut-être)"
+    choix="Les choix séparés par des virgules (ex: Oui,Non,Peut-être)",
+    max_votes="Nombre maximum de réponses qu’un membre peut choisir"
 )
-async def sondage(interaction: discord.Interaction, question: str, max_votes: int, reponses: str):
-    options = [r.strip() for r in reponses.split(",") if r.strip()]
-    if len(options) < 2 or len(options) > 10:
-        await interaction.response.send_message("⚠️ Il faut entre 2 et 10 réponses maximum.", ephemeral=True)
+async def sondage(interaction: discord.Interaction, question: str, choix: str, max_votes: int):
+    emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+    options = [opt.strip() for opt in choix.split(",")]
+
+    if not (2 <= len(options) <= len(emojis)):
+        await interaction.response.send_message(
+            "❌ Vous devez entrer entre 2 et 10 options séparées par des virgules.",
+            ephemeral=True
+        )
         return
 
     if max_votes < 1 or max_votes > len(options):
-        await interaction.response.send_message("⚠️ Le nombre maximum de votes doit être entre 1 et le nombre de réponses.", ephemeral=True)
+        await interaction.response.send_message(
+            f"❌ Le nombre de votes doit être entre 1 et {len(options)}.",
+            ephemeral=True
+        )
         return
 
-    emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']
-    description = f"**{question}**\n\n"
-    for i, opt in enumerate(options):
-        description += f"{emojis[i]} {opt}\n"
+    description = ""
+    for i, option in enumerate(options):
+        description += f"{emojis[i]} {option}\n"
 
-    embed = discord.Embed(title="🗳️ Sondage", description=description, color=0x00ff99)
-    embed.set_footer(text=f"Max {max_votes} vote(s) par personne.")
+    embed = discord.Embed(
+        title=f"📊 {question}",
+        description=description,
+        color=discord.Color.blurple()
+    )
+    embed.set_footer(text=f"Vous pouvez voter pour {max_votes} option(s).")
 
     await interaction.response.send_message(embed=embed)
     message = await interaction.original_response()
@@ -46,6 +56,4 @@ async def sondage(interaction: discord.Interaction, question: str, max_votes: in
     for i in range(len(options)):
         await message.add_reaction(emojis[i])
 
-# Démarrage du bot
-if __name__ == "__main__":
-    bot.run(os.environ["DISCORD_TOKEN"])
+bot.run(os.environ["DISCORD_TOKEN"])
